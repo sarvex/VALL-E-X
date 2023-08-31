@@ -6,9 +6,7 @@ langid.set_languages(['en', 'zh', 'ja'])
 
 def split_text_into_sentences(text):
     if langid.classify(text)[0] == "en":
-        sentences = nltk.tokenize.sent_tokenize(text)
-
-        return sentences
+        return nltk.tokenize.sent_tokenize(text)
     elif langid.classify(text)[0] == "zh":
         sentences = []
         segs = jieba.cut(text, cut_all=False)

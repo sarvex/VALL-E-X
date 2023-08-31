@@ -51,17 +51,14 @@ class TextTokenCollater:
         )
 
         self.token2idx = {token: idx for idx, token in enumerate(unique_tokens)}
-        self.idx2token = [token for token in unique_tokens]
+        self.idx2token = list(unique_tokens)
 
     def index(
         self, tokens_list: List[str]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         seqs, seq_lens = [], []
         for tokens in tokens_list:
-            assert (
-                all([True if s in self.token2idx else False for s in tokens])
-                is True
-            )
+            assert all(s in self.token2idx for s in tokens)
             seq = (
                 ([self.bos_symbol] if self.add_bos else [])
                 + list(tokens)
@@ -71,7 +68,7 @@ class TextTokenCollater:
             seq_lens.append(len(seq))
 
         max_len = max(seq_lens)
-        for k, (seq, seq_len) in enumerate(zip(seqs, seq_lens)):
+        for seq, seq_len in zip(seqs, seq_lens):
             seq.extend([self.pad_symbol] * (max_len - seq_len))
 
         tokens = torch.from_numpy(
@@ -85,7 +82,7 @@ class TextTokenCollater:
         return tokens, tokens_lens
 
     def __call__(self, texts: List[str]) -> Tuple[torch.Tensor, torch.Tensor]:
-        tokens_seqs = [[p for p in text] for text in texts]
+        tokens_seqs = [list(text) for text in texts]
         max_len = len(max(tokens_seqs, key=len))
 
         seqs = [
@@ -96,12 +93,7 @@ class TextTokenCollater:
             for seq in tokens_seqs
         ]
 
-        tokens_batch = torch.from_numpy(
-            np.array(
-                [seq for seq in seqs],
-                dtype=np.int64,
-            )
-        )
+        tokens_batch = torch.from_numpy(np.array(list(seqs), dtype=np.int64))
 
         tokens_lens = torch.IntTensor(
             [
@@ -114,7 +106,4 @@ class TextTokenCollater:
 
 
 def get_text_token_collater() -> TextTokenCollater:
-    collater = TextTokenCollater(
-        ['0'], add_bos=False, add_eos=False
-    )
-    return collater
+    return TextTokenCollater(['0'], add_bos=False, add_eos=False)

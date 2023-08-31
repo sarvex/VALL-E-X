@@ -95,7 +95,7 @@ class BatchedOptimizer(Optimizer):
         ]
         batches = [batches[batches_names_keys[idx]] for idx in sorted_idx]
 
-        stacked_params_dict = dict()
+        stacked_params_dict = {}
 
         # turn batches into a list, in deterministic order.
         # tuples will contain tuples of (stacked_param, state, stacked_params_names),
@@ -329,7 +329,7 @@ class ScaledAdam(BatchedOptimizer):
                 param_names is a List[str] while each str is name for a parameter
                 in batched set of parameters "param".
         """
-        assert len(tuples) >= 1
+        assert tuples
         clipping_scale = group["clipping_scale"]
         (first_p, first_state, _) = tuples[0]
         step = first_state["step"]
@@ -390,26 +390,25 @@ class ScaledAdam(BatchedOptimizer):
 
         if step < clipping_update_period:
             return 1.0  # We have not yet estimated a norm to clip to.
-        else:
-            try:
-                model_norm_threshold = first_state["model_norm_threshold"]
-            except KeyError:
-                logging.info(
-                    "Warning: model_norm_threshold not in state: possibly "
-                    "you changed config when restarting, adding clipping_scale option?"
-                )
-                return 1.0
-            ans = min(1.0, (model_norm_threshold / (tot_norm + 1.0e-20)).item())
-            if ans < 1.0:
-                first_state["num_clipped"] += 1
-            if ans < 0.1:
-                logging.warn(
-                    f"Scaling gradients by {ans}, model_norm_threshold={model_norm_threshold}"
-                )
-                if self.show_dominant_parameters:
-                    assert p.shape[0] == len(param_names)
-                    self._show_gradient_dominating_parameter(tuples, tot_sumsq)
-            return ans
+        try:
+            model_norm_threshold = first_state["model_norm_threshold"]
+        except KeyError:
+            logging.info(
+                "Warning: model_norm_threshold not in state: possibly "
+                "you changed config when restarting, adding clipping_scale option?"
+            )
+            return 1.0
+        ans = min(1.0, (model_norm_threshold / (tot_norm + 1.0e-20)).item())
+        if ans < 1.0:
+            first_state["num_clipped"] += 1
+        if ans < 0.1:
+            logging.warn(
+                f"Scaling gradients by {ans}, model_norm_threshold={model_norm_threshold}"
+            )
+            if self.show_dominant_parameters:
+                assert p.shape[0] == len(param_names)
+                self._show_gradient_dominating_parameter(tuples, tot_sumsq)
+        return ans
 
     def _show_gradient_dominating_parameter(
         self, tuples: List[Tuple[Tensor, dict, List[str]]], tot_sumsq: Tensor
@@ -449,17 +448,16 @@ class ScaledAdam(BatchedOptimizer):
                 all_sumsq_orig[name] = (proportion_orig, sumsq_orig, rms, grad)
 
         assert torch.isclose(
-            sum([value[0] for value in all_sumsq_orig.values()]).cpu(),
+            sum(value[0] for value in all_sumsq_orig.values()).cpu(),
             torch.tensor(1.0),
         )
-        sorted_by_proportion = {
-            k: v
-            for k, v in sorted(
+        sorted_by_proportion = dict(
+            sorted(
                 all_sumsq_orig.items(),
                 key=lambda item: item[1][0],
                 reverse=True,
             )
-        }
+        )
         dominant_param_name = next(iter(sorted_by_proportion))
         (
             dominant_proportion,
@@ -618,9 +616,7 @@ class ScaledAdam(BatchedOptimizer):
         exp_avg_sq = state["exp_avg_sq"]
         exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=(1 - beta2))
 
-        this_step = state["step"] - (
-            state["zero_step"] if "zero_step" in state else 0
-        )
+        this_step = (state["step"] - state.get("zero_step", 0))
         bias_correction2 = 1 - beta2 ** (this_step + 1)
         if bias_correction2 < 0.99:
             # note: not in-place.
@@ -670,9 +666,7 @@ class LRScheduler(object):
     def __init__(self, optimizer: Optimizer, verbose: bool = False):
         # Attach optimizer
         if not isinstance(optimizer, Optimizer):
-            raise TypeError(
-                "{} is not an Optimizer".format(type(optimizer).__name__)
-            )
+            raise TypeError(f"{type(optimizer).__name__} is not an Optimizer")
         self.optimizer = optimizer
         self.verbose = verbose
 
@@ -721,20 +715,14 @@ class LRScheduler(object):
         # all epochs.
         # You can call this in any order; if you don't provide 'batch', it should
         # of course be called once per batch.
-        if batch is not None:
-            self.batch = batch
-        else:
-            self.batch = self.batch + 1
+        self.batch = batch if batch is not None else self.batch + 1
         self._set_lrs()
 
     def step_epoch(self, epoch: Optional[int] = None):
         # Step the epoch index, or just set it.  If you provide the 'epoch' arg,
         # you should call this at the start of the epoch; if you don't provide the 'epoch'
         # arg, you should call it at the end of the epoch.
-        if epoch is not None:
-            self.epoch = epoch
-        else:
-            self.epoch = self.epoch + 1
+        self.epoch = epoch if epoch is not None else self.epoch + 1
         self._set_lrs()
 
     def _set_lrs(self):
@@ -816,7 +804,7 @@ def _test_eden():
     for epoch in range(10):
         scheduler.step_epoch(epoch)  # sets epoch to `epoch`
 
-        for step in range(20):
+        for _ in range(20):
             x = torch.randn(200, 100).detach()
             x.requires_grad = True
             y = m(x)
@@ -878,24 +866,18 @@ class Eve(Optimizer):
         weight_decay=1e-3,
         target_rms=0.1,
     ):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if eps < 0.0:
+            raise ValueError(f"Invalid epsilon value: {eps}")
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError(
-                "Invalid beta parameter at index 0: {}".format(betas[0])
-            )
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError(
-                "Invalid beta parameter at index 1: {}".format(betas[1])
-            )
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
         if not 0 <= weight_decay <= 0.1:
-            raise ValueError(
-                "Invalid weight_decay value: {}".format(weight_decay)
-            )
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         if not 0 < target_rms <= 10.0:
-            raise ValueError("Invalid target_rms value: {}".format(target_rms))
+            raise ValueError(f"Invalid target_rms value: {target_rms}")
         defaults = dict(
             lr=lr,
             betas=betas,
@@ -1096,10 +1078,6 @@ if __name__ == "__main__":
     logging.info(s)
     import sys
 
-    if len(sys.argv) > 1:
-        hidden_dim = int(sys.argv[1])
-    else:
-        hidden_dim = 200
-
+    hidden_dim = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     _test_scaled_adam(hidden_dim)
     _test_eden()

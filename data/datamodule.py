@@ -253,15 +253,10 @@ class TtsDataModule:
             logging.info(
                 f"Time warp factor: {self.args.spec_aug_time_warp_factor}"
             )
-            # Set the value of num_frame_masks according to Lhotse's version.
-            # In different Lhotse's versions, the default of num_frame_masks is
-            # different.
-            num_frame_masks = 10
             num_frame_masks_parameter = inspect.signature(
                 SpecAugment.__init__
             ).parameters["num_frame_masks"]
-            if num_frame_masks_parameter.default == 1:
-                num_frame_masks = 2
+            num_frame_masks = 2 if num_frame_masks_parameter.default == 1 else 10
             logging.info(f"Num frame mask: {num_frame_masks}")
             input_transforms.append(
                 SpecAugment(
@@ -333,7 +328,7 @@ class TtsDataModule:
         seed = torch.randint(0, 100000, ()).item()
         worker_init_fn = _SeedWorkers(seed)
 
-        train_dl = DataLoader(
+        return DataLoader(
             train,
             sampler=train_sampler,
             batch_size=None,
@@ -341,8 +336,6 @@ class TtsDataModule:
             persistent_workers=False,
             worker_init_fn=worker_init_fn,
         )
-
-        return train_dl
 
     def valid_dataloaders(self, cuts_valid: CutSet) -> DataLoader:
         logging.info("About to create dev dataset")
@@ -366,15 +359,13 @@ class TtsDataModule:
             shuffle=False,
         )
         logging.info("About to create dev dataloader")
-        valid_dl = DataLoader(
+        return DataLoader(
             validate,
             sampler=valid_sampler,
             batch_size=None,
             num_workers=4,
             persistent_workers=False,
         )
-
-        return valid_dl
 
     def test_dataloaders(self, cuts: CutSet) -> DataLoader:
         logging.debug("About to create test dataset")
@@ -393,13 +384,12 @@ class TtsDataModule:
             shuffle=False,
         )
         logging.debug("About to create test dataloader")
-        test_dl = DataLoader(
+        return DataLoader(
             test,
             batch_size=None,
             sampler=sampler,
             num_workers=self.args.num_workers,
         )
-        return test_dl
 
     @lru_cache()
     def train_cuts(self) -> CutSet:

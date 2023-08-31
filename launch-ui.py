@@ -140,7 +140,12 @@ def transcribe_one(model, audio_path):
     print(f"Detected language: {max(probs, key=probs.get)}")
     lang = max(probs, key=probs.get)
     # decode the audio
-    options = whisper.DecodingOptions(temperature=1.0, best_of=5, fp16=False if device == torch.device("cpu") else True, sample_len=150)
+    options = whisper.DecodingOptions(
+        temperature=1.0,
+        best_of=5,
+        fp16=device != torch.device("cpu"),
+        sample_len=150,
+    )
     result = whisper.decode(model, mel, options)
 
     # print the recognized text
@@ -506,14 +511,20 @@ def main():
             with gr.Row():
                 with gr.Column():
 
-                    textbox = gr.TextArea(label="Text",
-                                          placeholder="Type your sentence here",
-                                          value="Welcome back, Master. What can I do for you today?", elem_id=f"tts-input")
+                    textbox = gr.TextArea(
+                        label="Text",
+                        placeholder="Type your sentence here",
+                        value="Welcome back, Master. What can I do for you today?",
+                        elem_id="tts-input",
+                    )
                     language_dropdown = gr.Dropdown(choices=['auto-detect', 'English', '中文', '日本語'], value='auto-detect', label='language')
                     accent_dropdown = gr.Dropdown(choices=['no-accent', 'English', '中文', '日本語'], value='no-accent', label='accent')
-                    textbox_transcript = gr.TextArea(label="Transcript",
-                                          placeholder="Write transcript here. (leave empty to use whisper)",
-                                          value="", elem_id=f"prompt-name")
+                    textbox_transcript = gr.TextArea(
+                        label="Transcript",
+                        placeholder="Write transcript here. (leave empty to use whisper)",
+                        value="",
+                        elem_id="prompt-name",
+                    )
                     upload_audio_prompt = gr.Audio(label='uploaded audio prompt', source='upload', interactive=True)
                     record_audio_prompt = gr.Audio(label='recorded audio prompt', source='microphone', interactive=True)
                 with gr.Column():
@@ -523,9 +534,12 @@ def main():
                     btn.click(infer_from_audio,
                               inputs=[textbox, language_dropdown, accent_dropdown, upload_audio_prompt, record_audio_prompt, textbox_transcript],
                               outputs=[text_output, audio_output])
-                    textbox_mp = gr.TextArea(label="Prompt name",
-                                          placeholder="Name your prompt here",
-                                          value="prompt_1", elem_id=f"prompt-name")
+                    textbox_mp = gr.TextArea(
+                        label="Prompt name",
+                        placeholder="Name your prompt here",
+                        value="prompt_1",
+                        elem_id="prompt-name",
+                    )
                     btn_mp = gr.Button("Make prompt!")
                     prompt_output = gr.File(interactive=False)
                     btn_mp.click(make_npz_prompt,
@@ -540,13 +554,19 @@ def main():
             gr.Markdown(make_prompt_md)
             with gr.Row():
                 with gr.Column():
-                    textbox2 = gr.TextArea(label="Prompt name",
-                                          placeholder="Name your prompt here",
-                                          value="prompt_1", elem_id=f"prompt-name")
+                    textbox2 = gr.TextArea(
+                        label="Prompt name",
+                        placeholder="Name your prompt here",
+                        value="prompt_1",
+                        elem_id="prompt-name",
+                    )
                     # 添加选择语言和输入台本的地方
-                    textbox_transcript2 = gr.TextArea(label="Transcript",
-                                          placeholder="Write transcript here. (leave empty to use whisper)",
-                                          value="", elem_id=f"prompt-name")
+                    textbox_transcript2 = gr.TextArea(
+                        label="Transcript",
+                        placeholder="Write transcript here. (leave empty to use whisper)",
+                        value="",
+                        elem_id="prompt-name",
+                    )
                     upload_audio_prompt_2 = gr.Audio(label='uploaded audio prompt', source='upload', interactive=True)
                     record_audio_prompt_2 = gr.Audio(label='recorded audio prompt', source='microphone', interactive=True)
                 with gr.Column():
@@ -565,9 +585,12 @@ def main():
             gr.Markdown(infer_from_prompt_md)
             with gr.Row():
                 with gr.Column():
-                    textbox_3 = gr.TextArea(label="Text",
-                                          placeholder="Type your sentence here",
-                                          value="Welcome back, Master. What can I do for you today?", elem_id=f"tts-input")
+                    textbox_3 = gr.TextArea(
+                        label="Text",
+                        placeholder="Type your sentence here",
+                        value="Welcome back, Master. What can I do for you today?",
+                        elem_id="tts-input",
+                    )
                     language_dropdown_3 = gr.Dropdown(choices=['auto-detect', 'English', '中文', '日本語', 'Mix'], value='auto-detect',
                                                     label='language')
                     accent_dropdown_3 = gr.Dropdown(choices=['no-accent', 'English', '中文', '日本語'], value='no-accent',
@@ -590,9 +613,12 @@ def main():
             gr.Markdown("This is a long text generation demo. You can use this to generate long audio. ")
             with gr.Row():
                 with gr.Column():
-                    textbox_4 = gr.TextArea(label="Text",
-                                          placeholder="Type your sentence here",
-                                          value=long_text_example, elem_id=f"tts-input")
+                    textbox_4 = gr.TextArea(
+                        label="Text",
+                        placeholder="Type your sentence here",
+                        value=long_text_example,
+                        elem_id="tts-input",
+                    )
                     language_dropdown_4 = gr.Dropdown(choices=['auto-detect', 'English', '中文', '日本語'], value='auto-detect',
                                                     label='language')
                     accent_dropdown_4 = gr.Dropdown(choices=['no-accent', 'English', '中文', '日本語'], value='no-accent',

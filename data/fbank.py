@@ -53,8 +53,7 @@ def dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
 
 
 def spectral_normalize_torch(magnitudes):
-    output = dynamic_range_compression_torch(magnitudes)
-    return output
+    return dynamic_range_compression_torch(magnitudes)
 
 
 # https://github.com/NVIDIA/BigVGAN
@@ -80,33 +79,25 @@ class BigVGANFbank(FeatureExtractor):
     def _feature_fn(self, samples, **kwargs):
         win_length, n_fft = 1024, 1024
         hop_size = 256
-        if True:
-            sampling_rate = 24000
-            duration = round(samples.shape[-1] / sampling_rate, ndigits=12)
-            expected_num_frames = compute_num_frames(
-                duration=duration,
-                frame_shift=self.frame_shift,
-                sampling_rate=sampling_rate,
-            )
-            pad_size = (
-                (expected_num_frames - 1) * hop_size
-                + win_length
-                - samples.shape[-1]
-            )
-            assert pad_size >= 0
+        sampling_rate = 24000
+        duration = round(samples.shape[-1] / sampling_rate, ndigits=12)
+        expected_num_frames = compute_num_frames(
+            duration=duration,
+            frame_shift=self.frame_shift,
+            sampling_rate=sampling_rate,
+        )
+        pad_size = (
+            (expected_num_frames - 1) * hop_size
+            + win_length
+            - samples.shape[-1]
+        )
+        assert pad_size >= 0
 
-            y = torch.nn.functional.pad(
-                samples,
-                (0, pad_size),
-                mode="constant",
-            )
-        else:
-            y = torch.nn.functional.pad(
-                samples,
-                (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
-                mode="reflect",
-            )
-
+        y = torch.nn.functional.pad(
+            samples,
+            (0, pad_size),
+            mode="constant",
+        )
         y = y.squeeze(1)
 
         # complex tensor as default, then use view_as_real for future pytorch compatibility

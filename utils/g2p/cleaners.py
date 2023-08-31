@@ -48,14 +48,23 @@ def cje_cleaners(text):
 
 def clean_one(text):
     if text.find('[ZH]') != -1:
-        text = re.sub(r'\[ZH\](.*?)\[ZH\]',
-                      lambda x: chinese_to_ipa(x.group(1))+' ', text)
+        text = re.sub(
+            r'\[ZH\](.*?)\[ZH\]',
+            lambda x: f'{chinese_to_ipa(x.group(1))} ',
+            text,
+        )
     if text.find('[JA]') != -1:
-        text = re.sub(r'\[JA\](.*?)\[JA\]',
-                      lambda x: japanese_to_ipa2(x.group(1))+' ', text)
+        text = re.sub(
+            r'\[JA\](.*?)\[JA\]',
+            lambda x: f'{japanese_to_ipa2(x.group(1))} ',
+            text,
+        )
     if text.find('[EN]') != -1:
-        text = re.sub(r'\[EN\](.*?)\[EN\]',
-                      lambda x: english_to_ipa2(x.group(1))+' ', text)
+        text = re.sub(
+            r'\[EN\](.*?)\[EN\]',
+            lambda x: f'{english_to_ipa2(x.group(1))} ',
+            text,
+        )
     text = re.sub(r'\s+$', '', text)
     text = re.sub(r'([^\.,!\?\-…~])$', r'\1.', text)
     return text

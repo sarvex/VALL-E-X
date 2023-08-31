@@ -307,9 +307,7 @@ class TransformerEncoderLayer(nn.Module):
             )
             x = self.norm2(x + self._ff_block(x), stage_embedding)
 
-        if is_src_tuple:
-            return (x, stage_embedding)
-        return x
+        return (x, stage_embedding) if is_src_tuple else x
 
     def infer(
         self,
@@ -346,9 +344,7 @@ class TransformerEncoderLayer(nn.Module):
             x = x + x_attn_out
             x = x + self._ff_block(self.norm2(x, stage_embedding))
 
-        if is_src_tuple:
-            return (x, stage_embedding)
-        return (x, kv)
+        return (x, stage_embedding) if is_src_tuple else (x, kv)
 
     # self-attention block
     def _sa_block(
@@ -623,9 +619,7 @@ class TransformerDecoderLayer(nn.Module):
             )
             x = self.norm3(x + self._ff_block(x), stage_embedding)
 
-        if tgt_is_tuple:
-            return (x, stage_embedding)
-        return x
+        return (x, stage_embedding) if tgt_is_tuple else x
 
     # self-attention block
     def _sa_block(
@@ -669,15 +663,13 @@ class TransformerDecoderLayer(nn.Module):
 
 
 def _get_clones(module, N):
-    return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
+    return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 
 def _get_activation_fn(activation: str) -> Callable[[Tensor], Tensor]:
-    if activation == "relu":
-        return F.relu
-    elif activation == "gelu":
+    if activation == "gelu":
         return F.gelu
 
-    raise RuntimeError(
-        "activation should be relu/gelu, not {}".format(activation)
-    )
+    elif activation == "relu":
+        return F.relu
+    raise RuntimeError(f"activation should be relu/gelu, not {activation}")

@@ -1,5 +1,6 @@
 """ from https://github.com/keithito/tacotron """
 
+
 '''
 Cleaners are transformations that run over the input text at both training and eval time.
 
@@ -51,37 +52,42 @@ _abbreviations = [(re.compile('\\b%s\\.' % x[0], re.IGNORECASE), x[1]) for x in 
 
 
 # List of (ipa, lazy ipa) pairs:
-_lazy_ipa = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('r', 'ɹ'),
-    ('æ', 'e'),
-    ('ɑ', 'a'),
-    ('ɔ', 'o'),
-    ('ð', 'z'),
-    ('θ', 's'),
-    ('ɛ', 'e'),
-    ('ɪ', 'i'),
-    ('ʊ', 'u'),
-    ('ʒ', 'ʥ'),
-    ('ʤ', 'ʥ'),
-    ('ˈ', '↓'),
-]]
+_lazy_ipa = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        ('r', 'ɹ'),
+        ('æ', 'e'),
+        ('ɑ', 'a'),
+        ('ɔ', 'o'),
+        ('ð', 'z'),
+        ('θ', 's'),
+        ('ɛ', 'e'),
+        ('ɪ', 'i'),
+        ('ʊ', 'u'),
+        ('ʒ', 'ʥ'),
+        ('ʤ', 'ʥ'),
+        ('ˈ', '↓'),
+    ]
+]
 
 # List of (ipa, lazy ipa2) pairs:
-_lazy_ipa2 = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('r', 'ɹ'),
-    ('ð', 'z'),
-    ('θ', 's'),
-    ('ʒ', 'ʑ'),
-    ('ʤ', 'dʑ'),
-    ('ˈ', '↓'),
-]]
+_lazy_ipa2 = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        ('r', 'ɹ'),
+        ('ð', 'z'),
+        ('θ', 's'),
+        ('ʒ', 'ʑ'),
+        ('ʤ', 'dʑ'),
+        ('ˈ', '↓'),
+    ]
+]
 
 # List of (ipa, ipa2) pairs
-_ipa_to_ipa2 = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('r', 'ɹ'),
-    ('ʤ', 'dʒ'),
-    ('ʧ', 'tʃ')
-]]
+_ipa_to_ipa2 = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [('r', 'ɹ'), ('ʤ', 'dʒ'), ('ʧ', 'tʃ')]
+]
 
 
 def expand_abbreviations(text):
@@ -106,19 +112,19 @@ def _expand_dollars(m):
     match = m.group(1)
     parts = match.split('.')
     if len(parts) > 2:
-        return match + ' dollars'  # Unexpected format
+        return f'{match} dollars'
     dollars = int(parts[0]) if parts[0] else 0
     cents = int(parts[1]) if len(parts) > 1 and parts[1] else 0
     if dollars and cents:
         dollar_unit = 'dollar' if dollars == 1 else 'dollars'
         cent_unit = 'cent' if cents == 1 else 'cents'
-        return '%s %s, %s %s' % (dollars, dollar_unit, cents, cent_unit)
+        return f'{dollars} {dollar_unit}, {cents} {cent_unit}'
     elif dollars:
         dollar_unit = 'dollar' if dollars == 1 else 'dollars'
-        return '%s %s' % (dollars, dollar_unit)
+        return f'{dollars} {dollar_unit}'
     elif cents:
         cent_unit = 'cent' if cents == 1 else 'cents'
-        return '%s %s' % (cents, cent_unit)
+        return f'{cents} {cent_unit}'
     else:
         return 'zero dollars'
 
@@ -129,17 +135,16 @@ def _expand_ordinal(m):
 
 def _expand_number(m):
     num = int(m.group(0))
-    if num > 1000 and num < 3000:
-        if num == 2000:
-            return 'two thousand'
-        elif num > 2000 and num < 2010:
-            return 'two thousand ' + _inflect.number_to_words(num % 100)
-        elif num % 100 == 0:
-            return _inflect.number_to_words(num // 100) + ' hundred'
-        else:
-            return _inflect.number_to_words(num, andword='', zero='oh', group=2).replace(', ', ' ')
-    else:
+    if num <= 1000 or num >= 3000:
         return _inflect.number_to_words(num, andword='')
+    if num == 2000:
+        return 'two thousand'
+    elif num > 2000 and num < 2010:
+        return f'two thousand {_inflect.number_to_words(num % 100)}'
+    elif num % 100 == 0:
+        return f'{_inflect.number_to_words(num // 100)} hundred'
+    else:
+        return _inflect.number_to_words(num, andword='', zero='oh', group=2).replace(', ', ' ')
 
 
 def normalize_numbers(text):
@@ -153,7 +158,7 @@ def normalize_numbers(text):
 
 
 def mark_dark_l(text):
-    return re.sub(r'l([^aeiouæɑɔəɛɪʊ ]*(?: |$))', lambda x: 'ɫ'+x.group(1), text)
+    return re.sub(r'l([^aeiouæɑɔəɛɪʊ ]*(?: |$))', lambda x: f'ɫ{x.group(1)}', text)
 
 
 def english_to_ipa(text):

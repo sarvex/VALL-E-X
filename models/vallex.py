@@ -163,12 +163,14 @@ class VALLF(nn.Module):
         assert num_quantizers >= 1
         if num_quantizers > 1:
             self.nar_audio_embeddings = nn.ModuleList(
-                [TokenEmbedding(nar_d_model, NUM_AUDIO_TOKENS + 1)]
-                + [
-                    TokenEmbedding(nar_d_model, NUM_AUDIO_TOKENS)
-                    for i in range(num_quantizers - 1)
-                ]
-            )  # W_a
+                (
+                    [TokenEmbedding(nar_d_model, NUM_AUDIO_TOKENS + 1)]
+                    + [
+                        TokenEmbedding(nar_d_model, NUM_AUDIO_TOKENS)
+                        for _ in range(num_quantizers - 1)
+                    ]
+                )
+            )
 
             # PreNet
             if add_prenet:
@@ -241,14 +243,11 @@ class VALLF(nn.Module):
             self.nar_predict_layers = nn.ModuleList(
                 [
                     nn.Linear(nar_d_model, NUM_AUDIO_TOKENS, bias=False)
-                    for i in range(num_quantizers - 1)
+                    for _ in range(num_quantizers - 1)
                 ]
             )
             self.nar_stage_embeddings = nn.ModuleList(
-                [
-                    TokenEmbedding(nar_d_model, 1)
-                    for i in range(num_quantizers - 1)
-                ]
+                [TokenEmbedding(nar_d_model, 1) for _ in range(num_quantizers - 1)]
             )
 
             if share_embedding:
@@ -265,14 +264,13 @@ class VALLF(nn.Module):
 
     def stage_parameters(self, stage: int = 1) -> Iterator[nn.Parameter]:
         assert stage > 0
-        if stage == 1:
-            for name, param in self.named_parameters():
+        for name, param in self.named_parameters():
+            if stage == 1:
                 if name.startswith("ar_"):
                     print(f" AR parameter: {name}")
                     yield param
 
-        if stage == 2:
-            for name, param in self.named_parameters():
+            elif stage == 2:
                 if name.startswith("nar_"):
                     print(f"NAR parameter: {name}")
                     yield param
@@ -281,15 +279,15 @@ class VALLF(nn.Module):
         self, stage: int = 1
     ) -> Iterator[Tuple[str, nn.Parameter]]:
         assert stage > 0
-        if stage == 1:
-            for pair in self.named_parameters():
-                if pair[0].startswith("ar_"):
-                    yield pair
-
-        if stage == 2:
-            for pair in self.named_parameters():
-                if pair[0].startswith("nar_"):
-                    yield pair
+        for pair in self.named_parameters():
+            if (
+                stage == 1
+                and pair[0].startswith("ar_")
+                or stage != 1
+                and stage == 2
+                and pair[0].startswith("nar_")
+            ):
+                yield pair
 
     def pad_y_eos(self, y, y_mask_int, eos_id):
         targets = F.pad(y, (0, 1), value=0) + eos_id * F.pad(
@@ -544,9 +542,6 @@ class VALLE(VALLF):
 
             if use_kv_caching and kv_cache is not None:
                 xy_pos = xy_pos[:, [-1]]
-            else:
-                pass
-
             xy_dec, kv_cache = self.ar_decoder.infer(
                 xy_pos,
                 mask=xy_attn_mask,
@@ -827,6 +822,4 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0):
         logits = logits / temperature
     # Top-p/top-k filtering
     logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-    # Sample
-    token = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
-    return token
+    return torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)

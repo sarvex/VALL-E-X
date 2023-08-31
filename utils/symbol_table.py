@@ -86,15 +86,15 @@ class SymbolTable(Generic[Symbol]):
         Returns:
           An instance of :class:`SymbolTable`.
         '''
-        id2sym: Dict[int, str] = dict()
-        sym2id: Dict[str, int] = dict()
+        id2sym: Dict[int, str] = {}
+        sym2id: Dict[str, int] = {}
 
         for line in s.split('\n'):
             fields = line.split()
             if len(fields) == 0:
                 continue  # skip empty lines
             assert len(fields) == 2, \
-                    f'Expect a line with 2 fields. Given: {len(fields)}'
+                        f'Expect a line with 2 fields. Given: {len(fields)}'
             sym, idx = fields[0], int(fields[1])
             assert sym not in sym2id, f'Duplicated symbol {sym}'
             assert idx not in id2sym, f'Duplicated id {idx}'
@@ -136,10 +136,9 @@ class SymbolTable(Generic[Symbol]):
           Return a string representation of this object. You can pass
           it to the method ``from_str`` to recreate an identical object.
         '''
-        s = ''
-        for idx, symbol in sorted(self._id2sym.items()):
-            s += f'{symbol} {idx}\n'
-        return s
+        return ''.join(
+            f'{symbol} {idx}\n' for idx, symbol in sorted(self._id2sym.items())
+        )
 
     def to_file(self, filename: str):
         '''Serialize the SymbolTable to a file.
@@ -206,10 +205,7 @@ class SymbolTable(Generic[Symbol]):
         Returns:
           An id or a symbol depending on the given `k`.
         '''
-        if isinstance(k, int):
-            return self._id2sym[k]
-        else:
-            return self._sym2id[k]
+        return self._id2sym[k] if isinstance(k, int) else self._sym2id[k]
 
     def merge(self, other: 'SymbolTable') -> 'SymbolTable':
         '''Create a union of two SymbolTables.
@@ -251,10 +247,7 @@ class SymbolTable(Generic[Symbol]):
         return self.get(item)
 
     def __contains__(self, item: Union[int, Symbol]) -> bool:
-        if isinstance(item, int):
-            return item in self._id2sym
-        else:
-            return item in self._sym2id
+        return item in self._id2sym if isinstance(item, int) else item in self._sym2id
 
     def __len__(self) -> int:
         return len(self._id2sym)
@@ -263,25 +256,17 @@ class SymbolTable(Generic[Symbol]):
         if len(self) != len(other):
             return False
 
-        for s in self.symbols:
-            if self[s] != other[s]:
-                return False
-
-        return True
+        return all(self[s] == other[s] for s in self.symbols)
 
     @property
     def ids(self) -> List[int]:
         '''Returns a list of integer IDs corresponding to the symbols.
         '''
-        ans = list(self._id2sym.keys())
-        ans.sort()
-        return ans
+        return sorted(self._id2sym.keys())
 
     @property
     def symbols(self) -> List[Symbol]:
         '''Returns a list of symbols (e.g., strings) corresponding to
         the integer IDs.
         '''
-        ans = list(self._sym2id.keys())
-        ans.sort()
-        return ans
+        return sorted(self._sym2id.keys())

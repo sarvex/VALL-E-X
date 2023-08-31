@@ -42,7 +42,12 @@ def transcribe_one(model, audio_path):
     print(f"Detected language: {max(probs, key=probs.get)}")
     lang = max(probs, key=probs.get)
     # decode the audio
-    options = whisper.DecodingOptions(temperature=1.0, best_of=5, fp16=False if device == torch.device("cpu") else True, sample_len=150)
+    options = whisper.DecodingOptions(
+        temperature=1.0,
+        best_of=5,
+        fp16=device != torch.device("cpu"),
+        sample_len=150,
+    )
     result = whisper.decode(model, mel, options)
 
     # print the recognized text
@@ -103,14 +108,12 @@ def make_transcript(name, wav, sr, transcript=None):
         torchaudio.save(f"./prompts/{name}.wav", wav, sr)
         lang, text = transcribe_one(whisper_model, f"./prompts/{name}.wav")
         lang_token = lang2token[lang]
-        text = lang_token + text + lang_token
         os.remove(f"./prompts/{name}.wav")
         whisper_model.cpu()
     else:
         text = transcript
         lang, _ = langid.classify(text)
         lang_token = lang2token[lang]
-        text = lang_token + text + lang_token
-
+    text = lang_token + text + lang_token
     torch.cuda.empty_cache()
     return text, lang

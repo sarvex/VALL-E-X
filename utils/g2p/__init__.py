@@ -1,11 +1,12 @@
 """ from https://github.com/keithito/tacotron """
+
 import utils.g2p.cleaners
 from utils.g2p.symbols import symbols
 from tokenizers import Tokenizer
 
 # Mappings from symbol to numeric ID and vice versa:
 _symbol_to_id = {s: i for i, s in enumerate(symbols)}
-_id_to_symbol = {i: s for i, s in enumerate(symbols)}
+_id_to_symbol = dict(enumerate(symbols))
 
 
 class PhonemeBpeTokenizer:
@@ -32,15 +33,11 @@ def text_to_sequence(text, cleaner_names):
     Returns:
       List of integers corresponding to the symbols in the text
   '''
-  sequence = []
   symbol_to_id = {s: i for i, s in enumerate(symbols)}
   clean_text = _clean_text(text, cleaner_names)
-  for symbol in clean_text:
-    if symbol not in symbol_to_id.keys():
-      continue
-    symbol_id = symbol_to_id[symbol]
-    sequence += [symbol_id]
-  return sequence
+  return [
+      symbol_to_id[symbol] for symbol in clean_text if symbol in symbol_to_id
+  ]
 
 
 def cleaned_text_to_sequence(cleaned_text):
@@ -50,23 +47,21 @@ def cleaned_text_to_sequence(cleaned_text):
     Returns:
       List of integers corresponding to the symbols in the text
   '''
-  sequence = [_symbol_to_id[symbol] for symbol in cleaned_text if symbol in _symbol_to_id.keys()]
-  return sequence
+  return [
+      _symbol_to_id[symbol] for symbol in cleaned_text
+      if symbol in _symbol_to_id.keys()
+  ]
 
 
 def sequence_to_text(sequence):
   '''Converts a sequence of IDs back to a string'''
-  result = ''
-  for symbol_id in sequence:
-    s = _id_to_symbol[symbol_id]
-    result += s
-  return result
+  return ''.join(_id_to_symbol[symbol_id] for symbol_id in sequence)
 
 
 def _clean_text(text, cleaner_names):
   for name in cleaner_names:
-    cleaner = getattr(utils.g2p.cleaners, name)
-    if not cleaner:
-      raise Exception('Unknown cleaner: %s' % name)
-    text, langs = cleaner(text)
+    if cleaner := getattr(utils.g2p.cleaners, name):
+      text, langs = cleaner(text)
+    else:
+      raise Exception(f'Unknown cleaner: {name}')
   return text, langs

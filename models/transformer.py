@@ -94,7 +94,7 @@ class Transformer(nn.Module):
                 nn.Linear(256, d_model),
             )
 
-            assert scaling_xformers is False  # TODO: update this block
+            assert not scaling_xformers
         else:
             self.encoder_prenet = nn.Identity()
             if scaling_xformers:
@@ -169,7 +169,6 @@ class Transformer(nn.Module):
             )
 
             self.predict_layer = ScaledLinear(d_model, NUM_MEL_BINS)
-            self.stop_layer = nn.Linear(d_model, 1)
         else:
             self.encoder = nn.TransformerEncoder(
                 nn.TransformerEncoderLayer(
@@ -200,8 +199,7 @@ class Transformer(nn.Module):
             )
 
             self.predict_layer = nn.Linear(d_model, NUM_MEL_BINS)
-            self.stop_layer = nn.Linear(d_model, 1)
-
+        self.stop_layer = nn.Linear(d_model, 1)
         self.stop_accuracy_metric = BinaryAccuracy(
             threshold=0.5, multidim_average="global"
         )

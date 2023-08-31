@@ -48,14 +48,13 @@ def _in_projection_packed(
         if q is k:
             # self-attention
             return F.linear(q, w, b).chunk(3, dim=-1)
+        # encoder-decoder attention
+        w_q, w_kv = w.split([E, E * 2])
+        if b is None:
+            b_q = b_kv = None
         else:
-            # encoder-decoder attention
-            w_q, w_kv = w.split([E, E * 2])
-            if b is None:
-                b_q = b_kv = None
-            else:
-                b_q, b_kv = b.split([E, E * 2])
-            return (F.linear(q, w_q, b_q),) + F.linear(k, w_kv, b_kv).chunk(2, dim=-1)
+            b_q, b_kv = b.split([E, E * 2])
+        return (F.linear(q, w_q, b_q),) + F.linear(k, w_kv, b_kv).chunk(2, dim=-1)
     else:
         w_q, w_k, w_v = w.chunk(3)
         if b is None:
@@ -153,11 +152,7 @@ def multi_head_attention_forward(
 
     FULL_T = k.shape[-2]
 
-    if use_cache is True:
-        present = (k, v)
-    else:
-        present = None
-
+    present = (k, v) if use_cache is True else None
     att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
     att = att.masked_fill(attn_mask[FULL_T - T:FULL_T, :FULL_T], float('-inf'))
     att = F.softmax(att, dim=-1)
@@ -304,20 +299,19 @@ class MultiheadAttention(Module):
         else:
             if not self._qkv_same_embed_dim:
                 raise NotImplementedError
+            self.in_proj_linear = linear1_cls(
+                embed_dim, 3 * embed_dim, bias=bias, **factory_kwargs
+            )
+            self.in_proj_weight = self.in_proj_linear.weight
+
+            self.register_parameter("q_proj_weight", None)
+            self.register_parameter("k_proj_weight", None)
+            self.register_parameter("v_proj_weight", None)
+
+            if bias:
+                self.in_proj_bias = self.in_proj_linear.bias
             else:
-                self.in_proj_linear = linear1_cls(
-                    embed_dim, 3 * embed_dim, bias=bias, **factory_kwargs
-                )
-                self.in_proj_weight = self.in_proj_linear.weight
-
-                self.register_parameter("q_proj_weight", None)
-                self.register_parameter("k_proj_weight", None)
-                self.register_parameter("v_proj_weight", None)
-
-                if bias:
-                    self.in_proj_bias = self.in_proj_linear.bias
-                else:
-                    self.register_parameter("in_proj_bias", None)
+                self.register_parameter("in_proj_bias", None)
 
             self.out_proj = linear2_cls(
                 embed_dim, embed_dim, bias=bias, **factory_kwargs
@@ -480,43 +474,41 @@ class MultiheadAttention(Module):
             if torch.overrides.has_torch_function(tensor_args):
                 why_not_fast_path = "some Tensor argument has_torch_function"
             elif not all(
-                    [
-                        (x is None or x.is_cuda or "cpu" in str(x.device))
-                        for x in tensor_args
-                    ]
+                (x is None or x.is_cuda or "cpu" in str(x.device))
+                for x in tensor_args
             ):
                 why_not_fast_path = (
                     "some Tensor argument is neither CUDA nor CPU"
                 )
             elif torch.is_grad_enabled() and any(
-                    [x is not None and x.requires_grad for x in tensor_args]
+                x is not None and x.requires_grad for x in tensor_args
             ):
                 why_not_fast_path = (
                     "grad is enabled and at least one of query or the "
                     "input/output projection weights or biases requires_grad"
                 )
-            if not why_not_fast_path:
-                return torch._native_multi_head_attention(
-                    query,
-                    key,
-                    value,
-                    self.embed_dim,
-                    self.num_heads,
-                    self.in_proj_weight,
-                    self.in_proj_bias,
-                    self.out_proj.weight,
-                    self.out_proj.bias,
-                    key_padding_mask
-                    if key_padding_mask is not None
-                    else attn_mask,
-                    need_weights,
-                    average_attn_weights,
-                    1
-                    if key_padding_mask is not None
-                    else 0
-                    if attn_mask is not None
-                    else None,
-                )
+        if not why_not_fast_path:
+            return torch._native_multi_head_attention(
+                query,
+                key,
+                value,
+                self.embed_dim,
+                self.num_heads,
+                self.in_proj_weight,
+                self.in_proj_bias,
+                self.out_proj.weight,
+                self.out_proj.bias,
+                key_padding_mask
+                if key_padding_mask is not None
+                else attn_mask,
+                need_weights,
+                average_attn_weights,
+                1
+                if key_padding_mask is not None
+                else 0
+                if attn_mask is not None
+                else None,
+            )
 
         any_nested = query.is_nested or key.is_nested or value.is_nested
         assert not any_nested, (
@@ -525,7 +517,6 @@ class MultiheadAttention(Module):
         )
 
         if self.batch_first and is_batched:
-            # make sure that the transpose op does not affect the "is" property
             if key is value:
                 if query is key:
                     query = key = value = query.transpose(1, 0)

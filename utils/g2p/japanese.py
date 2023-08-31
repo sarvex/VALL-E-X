@@ -12,57 +12,69 @@ _japanese_marks = re.compile(
     r'[^A-Za-z\d\u3005\u3040-\u30ff\u4e00-\u9fff\uff11-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9d]')
 
 # List of (symbol, Japanese) pairs for marks:
-_symbols_to_japanese = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('％', 'パーセント')
-]]
+_symbols_to_japanese = [
+    (re.compile(f'{x[0]}'), x[1]) for x in [('％', 'パーセント')]
+]
 
 # List of (romaji, ipa) pairs for marks:
-_romaji_to_ipa = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('ts', 'ʦ'),
-    ('u', 'ɯ'),
-    ('j', 'ʥ'),
-    ('y', 'j'),
-    ('ni', 'n^i'),
-    ('nj', 'n^'),
-    ('hi', 'çi'),
-    ('hj', 'ç'),
-    ('f', 'ɸ'),
-    ('I', 'i*'),
-    ('U', 'ɯ*'),
-    ('r', 'ɾ')
-]]
+_romaji_to_ipa = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        ('ts', 'ʦ'),
+        ('u', 'ɯ'),
+        ('j', 'ʥ'),
+        ('y', 'j'),
+        ('ni', 'n^i'),
+        ('nj', 'n^'),
+        ('hi', 'çi'),
+        ('hj', 'ç'),
+        ('f', 'ɸ'),
+        ('I', 'i*'),
+        ('U', 'ɯ*'),
+        ('r', 'ɾ'),
+    ]
+]
 
 # List of (romaji, ipa2) pairs for marks:
-_romaji_to_ipa2 = [(re.compile('%s' % x[0]), x[1]) for x in [
-    ('u', 'ɯ'),
-    ('ʧ', 'tʃ'),
-    ('j', 'dʑ'),
-    ('y', 'j'),
-    ('ni', 'n^i'),
-    ('nj', 'n^'),
-    ('hi', 'çi'),
-    ('hj', 'ç'),
-    ('f', 'ɸ'),
-    ('I', 'i*'),
-    ('U', 'ɯ*'),
-    ('r', 'ɾ')
-]]
+_romaji_to_ipa2 = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        ('u', 'ɯ'),
+        ('ʧ', 'tʃ'),
+        ('j', 'dʑ'),
+        ('y', 'j'),
+        ('ni', 'n^i'),
+        ('nj', 'n^'),
+        ('hi', 'çi'),
+        ('hj', 'ç'),
+        ('f', 'ɸ'),
+        ('I', 'i*'),
+        ('U', 'ɯ*'),
+        ('r', 'ɾ'),
+    ]
+]
 
 # List of (consonant, sokuon) pairs:
-_real_sokuon = [(re.compile('%s' % x[0]), x[1]) for x in [
-    (r'Q([↑↓]*[kg])', r'k#\1'),
-    (r'Q([↑↓]*[tdjʧ])', r't#\1'),
-    (r'Q([↑↓]*[sʃ])', r's\1'),
-    (r'Q([↑↓]*[pb])', r'p#\1')
-]]
+_real_sokuon = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        (r'Q([↑↓]*[kg])', r'k#\1'),
+        (r'Q([↑↓]*[tdjʧ])', r't#\1'),
+        (r'Q([↑↓]*[sʃ])', r's\1'),
+        (r'Q([↑↓]*[pb])', r'p#\1'),
+    ]
+]
 
 # List of (consonant, hatsuon) pairs:
-_real_hatsuon = [(re.compile('%s' % x[0]), x[1]) for x in [
-    (r'N([↑↓]*[pbm])', r'm\1'),
-    (r'N([↑↓]*[ʧʥj])', r'n^\1'),
-    (r'N([↑↓]*[tdn])', r'n\1'),
-    (r'N([↑↓]*[kg])', r'ŋ\1')
-]]
+_real_hatsuon = [
+    (re.compile(f'{x[0]}'), x[1])
+    for x in [
+        (r'N([↑↓]*[pbm])', r'm\1'),
+        (r'N([↑↓]*[ʧʥj])', r'n^\1'),
+        (r'N([↑↓]*[tdn])', r'n\1'),
+        (r'N([↑↓]*[kg])', r'ŋ\1'),
+    ]
+]
 
 
 def symbols_to_japanese(text):

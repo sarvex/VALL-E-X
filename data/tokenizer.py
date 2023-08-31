@@ -59,12 +59,10 @@ class PypinyinBackend:
             _text = _text.replace(" ", separator.word)
             phones = []
             if self.backend == "pypinyin":
-                for n, py in enumerate(
-                    pinyin(
+                for py in pinyin(
                         _text, style=Style.TONE3, neutral_tone_with_five=True
-                    )
-                ):
-                    if all([c in self.punctuation_marks for c in py[0]]):
+                    ):
+                    if all(c in self.punctuation_marks for c in py[0]):
                         if len(phones):
                             assert phones[-1] == separator.syllable
                             phones.pop(-1)
@@ -73,36 +71,31 @@ class PypinyinBackend:
                     else:
                         phones.extend([py[0], separator.syllable])
             elif self.backend == "pypinyin_initials_finals":
-                for n, py in enumerate(
-                    pinyin(
+                for py in pinyin(
                         _text, style=Style.TONE3, neutral_tone_with_five=True
-                    )
-                ):
-                    if all([c in self.punctuation_marks for c in py[0]]):
+                    ):
+                    if all(c in self.punctuation_marks for c in py[0]):
                         if len(phones):
                             assert phones[-1] == separator.syllable
                             phones.pop(-1)
                         phones.extend(list(py[0]))
+                    elif py[0][-1].isalnum():
+                        initial = get_initials(py[0], strict=False)
+                        final = (
+                            (get_finals(py[0][:-1], strict=False) + py[0][-1])
+                            if py[0][-1].isdigit()
+                            else get_finals(py[0], strict=False)
+                        )
+                        phones.extend(
+                            [
+                                initial,
+                                separator.phone,
+                                final,
+                                separator.syllable,
+                            ]
+                        )
                     else:
-                        if py[0][-1].isalnum():
-                            initial = get_initials(py[0], strict=False)
-                            if py[0][-1].isdigit():
-                                final = (
-                                    get_finals(py[0][:-1], strict=False)
-                                    + py[0][-1]
-                                )
-                            else:
-                                final = get_finals(py[0], strict=False)
-                            phones.extend(
-                                [
-                                    initial,
-                                    separator.phone,
-                                    final,
-                                    separator.syllable,
-                                ]
-                            )
-                        else:
-                            assert ValueError
+                        assert ValueError
             else:
                 raise NotImplementedError
             phonemized.append(
@@ -242,10 +235,7 @@ class AudioTokenizer:
 
 def tokenize_audio(tokenizer: AudioTokenizer, audio):
     # Load and pre-process the audio waveform
-    if isinstance(audio, str):
-        wav, sr = torchaudio.load(audio)
-    else:
-        wav, sr = audio
+    wav, sr = torchaudio.load(audio) if isinstance(audio, str) else audio
     wav = convert_audio(wav, sr, tokenizer.sample_rate, tokenizer.channels)
     wav = wav.unsqueeze(0)
 

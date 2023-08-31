@@ -729,36 +729,35 @@ class ActivationBalancer(torch.nn.Module):
         # a floor at min_prob (==0.1, by default)
         prob = max(self.min_prob, 0.5 ** (1 + (count / 4000.0)))
 
-        if random.random() < prob:
-            sign_gain_factor = 0.5
-            if self.min_positive != 0.0 or self.max_positive != 1.0:
-                sign_factor = _compute_sign_factor(
-                    x,
-                    self.channel_dim,
-                    self.min_positive,
-                    self.max_positive,
-                    gain_factor=self.sign_gain_factor / prob,
-                    max_factor=self.max_factor,
-                )
-            else:
-                sign_factor = None
-
-            scale_factor = _compute_scale_factor(
-                x.detach(),
+        if random.random() >= prob:
+            return _no_op(x)
+        sign_gain_factor = 0.5
+        sign_factor = (
+            _compute_sign_factor(
+                x,
                 self.channel_dim,
-                min_abs=self.min_abs,
-                max_abs=self.max_abs,
-                gain_factor=self.scale_gain_factor / prob,
+                self.min_positive,
+                self.max_positive,
+                gain_factor=self.sign_gain_factor / prob,
                 max_factor=self.max_factor,
             )
-            return ActivationBalancerFunction.apply(
-                x,
-                scale_factor,
-                sign_factor,
-                self.channel_dim,
-            )
-        else:
-            return _no_op(x)
+            if self.min_positive != 0.0 or self.max_positive != 1.0
+            else None
+        )
+        scale_factor = _compute_scale_factor(
+            x.detach(),
+            self.channel_dim,
+            min_abs=self.min_abs,
+            max_abs=self.max_abs,
+            gain_factor=self.scale_gain_factor / prob,
+            max_factor=self.max_factor,
+        )
+        return ActivationBalancerFunction.apply(
+            x,
+            scale_factor,
+            sign_factor,
+            self.channel_dim,
+        )
 
 
 def penalize_abs_values_gt(x: Tensor, limit: float, penalty: float) -> Tensor:
@@ -792,12 +791,11 @@ def penalize_abs_values_gt(x: Tensor, limit: float, penalty: float) -> Tensor:
 def _diag(x: Tensor):  # like .diag(), but works for tensors with 3 dims.
     if x.ndim == 2:
         return x.diag()
-    else:
-        (batch, dim, dim) = x.shape
-        x = x.reshape(batch, dim * dim)
-        x = x[:, :: dim + 1]
-        assert x.shape == (batch, dim)
-        return x
+    (batch, dim, dim) = x.shape
+    x = x.reshape(batch, dim * dim)
+    x = x[:, :: dim + 1]
+    assert x.shape == (batch, dim)
+    return x
 
 
 def _whitening_metric(x: Tensor, num_groups: int):
@@ -833,9 +831,7 @@ def _whitening_metric(x: Tensor, num_groups: int):
     x_covarsq_mean_diag = (x_covar ** 2).sum() / (
         num_groups * channels_per_group
     )
-    # this metric will be >= 1.0; the larger it is, the less 'white' the data was.
-    metric = x_covarsq_mean_diag / (x_covar_mean_diag ** 2 + 1.0e-20)
-    return metric
+    return x_covarsq_mean_diag / (x_covar_mean_diag ** 2 + 1.0e-20)
 
 
 class WhiteningPenaltyFunction(torch.autograd.Function):
@@ -944,22 +940,20 @@ class Whiten(nn.Module):
             or self.grad_scale == 0
         ):
             return _no_op(x)
-        else:
-            if hasattr(self, "min_prob") and random.random() < 0.25:
+        if hasattr(self, "min_prob") and random.random() < 0.25:
                 # occasionally switch between min_prob and max_prob, based on whether
                 # we are above or below the threshold.
+            self.prob = (
+                self.max_prob
                 if (
                     _whitening_metric(x.to(torch.float32), self.num_groups)
                     > self.whitening_limit
-                ):
-                    # there would be a change to the grad.
-                    self.prob = self.max_prob
-                else:
-                    self.prob = self.min_prob
-
-            return WhiteningPenaltyFunction.apply(
-                x, self.num_groups, self.whitening_limit, self.grad_scale
+                )
+                else self.min_prob
             )
+        return WhiteningPenaltyFunction.apply(
+            x, self.num_groups, self.whitening_limit, self.grad_scale
+        )
 
 
 class WithLoss(torch.autograd.Function):
@@ -1265,6 +1259,7 @@ def _test_max_eig():
 
 
 def _test_whiten():
+    num_channels = 128
     for proportion in [0.1, 0.5, 10.0]:
         logging.info(f"_test_whiten(): proportion = {proportion}")
         x = torch.randn(100, 128)
@@ -1274,7 +1269,6 @@ def _test_whiten():
 
         x.requires_grad = True
 
-        num_channels = 128
         m = Whiten(
             1, 5.0, prob=1.0, grad_scale=0.1  # num_groups  # whitening_limit,
         )  # grad_scale

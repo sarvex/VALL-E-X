@@ -101,9 +101,9 @@ def generate_audio(text, prompt=None, language='auto', accent='no-accent'):
     if prompt is not None:
         prompt_path = prompt
         if not os.path.exists(prompt_path):
-            prompt_path = "./presets/" + prompt + ".npz"
+            prompt_path = f"./presets/{prompt}.npz"
         if not os.path.exists(prompt_path):
-            prompt_path = "./customs/" + prompt + ".npz"
+            prompt_path = f"./customs/{prompt}.npz"
         if not os.path.exists(prompt_path):
             raise ValueError(f"Cannot find prompt {prompt}")
         prompt_data = np.load(prompt_path)
@@ -168,9 +168,9 @@ def generate_audio_from_long_text(text, prompt=None, language='auto', accent='no
     if prompt is not None and prompt != "":
         prompt_path = prompt
         if not os.path.exists(prompt_path):
-            prompt_path = "./presets/" + prompt + ".npz"
+            prompt_path = f"./presets/{prompt}.npz"
         if not os.path.exists(prompt_path):
-            prompt_path = "./customs/" + prompt + ".npz"
+            prompt_path = f"./customs/{prompt}.npz"
         if not os.path.exists(prompt_path):
             raise ValueError(f"Cannot find prompt {prompt}")
         prompt_data = np.load(prompt_path)

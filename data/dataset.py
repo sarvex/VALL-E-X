@@ -42,8 +42,7 @@ def seq2phone(tokens: Union[List, np.ndarray]):
     :param tokens: phoneme tokens
     :return: recovered phoneme sequence
     """
-    phones = "".join([symbols[i] for i in tokens])
-    return phones
+    return "".join([symbols[i] for i in tokens])
 
 class DynamicBatchSampler(torch.utils.data.Sampler):
     def __init__(self, sampler, num_tokens_fn, num_buckets=100, min_size=0, max_size=1000,
@@ -79,9 +78,7 @@ class DynamicBatchSampler(torch.utils.data.Sampler):
             return False
         if len(batch) == self.max_sentences:
             return True
-        if num_tokens > self.max_tokens:
-            return True
-        return False
+        return num_tokens > self.max_tokens
 
     def __iter__(self):
         buckets = [[] for _ in range(self.num_buckets)]
@@ -90,7 +87,9 @@ class DynamicBatchSampler(torch.utils.data.Sampler):
         for idx in self.sampler:
             idx_length = self.num_tokens_fn(idx)
             if not (self.min_size <= idx_length <= self.max_size):
-                print("sentence at index {} of size {} exceeds max_tokens, the sentence is ignored".format(idx, idx_length))
+                print(
+                    f"sentence at index {idx} of size {idx_length} exceeds max_tokens, the sentence is ignored"
+                )
                 continue
 
             index_buckets = math.floor((idx_length - self.min_size) / (self.max_size - self.min_size + 1)
@@ -236,7 +235,9 @@ def create_dataloader(data_dir="/root/valle/egs/mix", n_gpus=1, rank=0, num_work
                                           max_tokens=max_duration)
 
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, num_workers=num_workers, collate_fn=collate,
-                                               batch_sampler=dynamic_sampler)
-
-    return train_loader
+    return torch.utils.data.DataLoader(
+        train_dataset,
+        num_workers=num_workers,
+        collate_fn=collate,
+        batch_sampler=dynamic_sampler,
+    )

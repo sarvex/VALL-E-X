@@ -97,7 +97,7 @@ def add_model_arguments(parser: argparse.ArgumentParser):
 
 def get_model(params) -> nn.Module:
     if params.model_name.lower() in ["vall-f", "vallf"]:
-        model = VALLF(
+        return VALLF(
             params.decoder_dim,
             params.nhead,
             params.num_decoder_layers,
@@ -110,7 +110,7 @@ def get_model(params) -> nn.Module:
             num_quantizers=params.num_quantizers,
         )
     elif params.model_name.lower() in ["vall-e", "valle"]:
-        model = VALLE(
+        return VALLE(
             params.decoder_dim,
             params.nhead,
             params.num_decoder_layers,
@@ -124,7 +124,7 @@ def get_model(params) -> nn.Module:
         )
     else:
         assert params.model_name in ["Transformer"]
-        model = Transformer(
+        return Transformer(
             params.decoder_dim,
             params.nhead,
             params.num_decoder_layers,
@@ -132,5 +132,3 @@ def get_model(params) -> nn.Module:
             add_prenet=params.add_prenet,
             scaling_xformers=params.scaling_xformers,
         )
-
-    return model
