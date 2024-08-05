@@ -15,7 +15,7 @@ cn2an
 jieba
 eng_to_ipa
 openai-whisper
-phonemizer==3.2.0
+phonemizer==3.3.0
 matplotlib
 gradio
 nltk
